@@ -24,6 +24,7 @@ from django.db import models
 from django.utils.translation import ugettext_lazy as _
 
 from pootle.core.markup import get_markup_filter_name, MarkupField
+from pootle_app.models import Directory
 from pootle_store.models import Store
 
 
@@ -177,3 +178,37 @@ class VirtualFolder(models.Model):
         folder location.
         """
         return "/".join(pootle_path.split("/")[:self.location.count("/")])
+
+    def get_items(self, pootle_path):
+        """Return the list of stores and directories in the given path.
+
+        This provides the visible stores and directories when drilling down
+        into a virtual folder in a given path.
+        """
+        items = []
+
+        # Adjust virtual folder location for current pootle path.
+        location = self.get_adjusted_location(pootle_path)
+
+        # Iterate over each file in the filtering rules to see if matches.
+        for filename in self.filter_rules.split(","):
+            vf_file = "/".join([location, filename])
+
+            if vf_file.startswith(pootle_path):
+                try:
+                    store = Store.objects.get(pootle_path=vf_file)
+                except Exception:
+                    pass
+                else:
+                    trailing_path = vf_file[len(pootle_path):]
+
+                    if "/" in trailing_path:
+                        dir_path = "".join([
+                            pootle_path,
+                            trailing_path[:trailing_path.find("/")+1],
+                        ])
+                        items.append(Directory.objects.get(pootle_path=dir_path))
+                    else:
+                        items.append(store)
+
+        return items
