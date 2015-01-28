@@ -144,13 +144,17 @@ class VirtualFolder(models.Model):#TODO this must be a TreeItem
 
         if self.is_browsable:
             # Recreate relationships between this vfolder and units.
+            print("Saving:  %s" % self)
             for location in self.get_all_pootle_paths():
                 for filename in self.filter_rules.split(","):
                     vf_file = "".join([location, filename])
 
                     qs = Store.objects.filter(pootle_path=vf_file)
+                    print("\tRelating store:  %s" % vf_file)
+                    print(qs)
 
                     if qs.exists():
+                        print("\t\tAdded units for:  %s" % vf_file)
                         self.units.add(*qs[0].units.all())
 
     @classmethod
@@ -293,28 +297,42 @@ class VirtualFolder(models.Model):#TODO this must be a TreeItem
         """
         items = []
 
+        print("ptl_path: %s" % pootle_path)#TODO borrar
         # Adjust virtual folder location for current pootle path.
         location = self.get_adjusted_location(pootle_path)
+        print("Location: %s" % location)#TODO borrar
+        print("ptl_path: %s" % pootle_path)#TODO borrar
 
         # Iterate over each file in the filtering rules to see if matches.
         for filename in self.filter_rules.split(","):
             vf_file = "/".join([location, filename])
 
+            print("\n\n========\n%s" % vf_file)#TODO borrar
+
             if vf_file.startswith(pootle_path):
+
+                print("Location: %s" % location)#TODO borrar
+                print("Filename: %s" % filename)#TODO borrar
+                print("Fname: %s" % vf_file)#TODO borrar
+
                 try:
                     store = Store.objects.get(pootle_path=vf_file)
                 except Exception:
                     pass
                 else:
+                    print("Fname exists")#TODO borrar
                     trailing_path = vf_file[len(pootle_path):]
+                    print("trailing: %s" % trailing_path)#TODO borrar
 
                     if "/" in trailing_path:
                         dir_path = "".join([
                             pootle_path,
                             trailing_path[:trailing_path.find("/")+1],
                         ])
+                        print("dir_path: %s" % dir_path)#TODO borrar
                         items.append(Directory.objects.get(pootle_path=dir_path))
                     else:
+                        print("appending: %s" % vf_file)#TODO borrar
                         items.append(store)
 
         return items
