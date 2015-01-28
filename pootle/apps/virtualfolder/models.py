@@ -177,7 +177,27 @@ class VirtualFolder(models.Model):
         actual filenames since those have to be concatenated to the virtual
         folder location.
         """
-        return "/".join(pootle_path.split("/")[:self.location.count("/")])
+        count = self.location.count("/")
+
+        if pootle_path.count("/") < count:
+            raise Exception("%s is not applicable in %s" % (self, pootle_path))
+
+        pootle_path_parts = pootle_path.strip("/").split("/")
+        location_parts = self.location.strip("/").split("/")
+
+        try:
+            if (location_parts[0] != pootle_path_parts[0] and
+                location_parts[0] != "{LANG}"):
+                raise Exception("%s is not applicable in %s" % (self,
+                                                                pootle_path))
+            elif (location_parts[1] != pootle_path_parts[1] and
+                  location_parts[1] != "{PROJ}"):
+                raise Exception("%s is not applicable in %s" % (self,
+                                                                pootle_path))
+        except IndexError:
+            pass
+
+        return "/".join(pootle_path.split("/")[:count])
 
     def get_items(self, pootle_path):
         """Return the list of stores and directories in the given path.
