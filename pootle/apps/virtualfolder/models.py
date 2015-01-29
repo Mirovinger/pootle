@@ -21,6 +21,7 @@
 import re
 
 from django.db import models
+from django.utils.functional import cached_property
 from django.utils.translation import ugettext_lazy as _
 
 from pootle.core.markup import get_markup_filter_name, MarkupField
@@ -83,7 +84,7 @@ def pattern_for_path(pootle_path):
     return "".join(str_list)
 
 
-class VirtualFolder(models.Model):
+class VirtualFolder(models.Model):#TODO this must be a TreeItem
 
     name = models.CharField(_('Name'), blank=False, max_length=70)
     location = models.CharField(
@@ -121,8 +122,12 @@ class VirtualFolder(models.Model):
         unique_together = ('name', 'location')
         ordering = ['-priority', 'name']
 
-    def __unicode__(self):
+    @cached_property
+    def code(self):
         return ": ".join([self.name, self.location])
+
+    def __unicode__(self):
+        return self.code
 
     @classmethod
     def get_applicable_for(cls, pootle_path):
@@ -232,3 +237,15 @@ class VirtualFolder(models.Model):
                         items.append(store)
 
         return items
+
+#    #def get_drill_down_url(self, pootle_path):
+#    #    return 
+
+#    def get_translate_url(self, pootle_path):
+#        from pootle.core.url_helpers import get_editor_filter, split_pootle_path
+#        lang, proj, dir, fn = split_pootle_path(pootle_path)
+
+#        return u''.join([
+#            reverse('pootle-projects-translate', args=[lang, proj, dir, fn]),
+#            get_editor_filter(**kwargs),
+#        ])
