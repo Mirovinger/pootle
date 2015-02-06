@@ -48,6 +48,7 @@ from pootle_misc.forms import make_search_form
 from pootle_misc.util import ajax_required, jsonify, to_int, get_date_interval
 from pootle_statistics.models import (Submission, SubmissionFields,
                                       SubmissionTypes)
+from virtualfolder.models import VirtualFolder
 
 from .decorators import get_unit_context
 from .fields import to_python
@@ -218,6 +219,14 @@ def get_step_query(request, units_queryset):
 
             if unit_filter == 'all':
                 match_queryset = units_queryset
+            elif unit_filter == 'most-important':
+                match_queryset = units_queryset
+                pootle_path = request.GET.get('path', None)
+                vf = VirtualFolder.get_most_important_in(pootle_path)
+
+                if vf is not None:
+                    stores_pks = vf.get_store_pks_in(pootle_path)
+                    match_queryset = match_queryset.filter(store__id__in=stores_pks)
             elif unit_filter == 'translated':
                 match_queryset = units_queryset.filter(state=TRANSLATED)
             elif unit_filter == 'untranslated':
