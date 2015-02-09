@@ -176,15 +176,36 @@ class VirtualFolder(models.Model):#TODO this must be a TreeItem
         return matching
 
     @classmethod
-    def get_most_important_in(cls, pootle_path):
-        """Return the higher priority matching virtual folder in pootle path."""
-        if pootle_path is not None:
-            vfolders = cls.get_matching_for(pootle_path)
+    def get_store_pks_by_priority_for(cls, pootle_path):
+        """Return the pks for stores in virtual folders in the given path."""
+        store_pks = []
 
-            if len(vfolders) > 0:
-                return vfolders[0]
+        for vf in cls.get_applicable_for(pootle_path):
+            # Adjust virtual folder location for current pootle path.
+            location = vf.get_adjusted_location(pootle_path)
 
-        return None
+            # Iterate over each file in the filtering rules to see if matches.
+            for filename in vf.filter_rules.split(","):
+                vf_file = "/".join([location, filename])
+
+                if vf_file.startswith(pootle_path):
+                    qs = Store.objects.filter(pootle_path=vf_file)
+
+                    if qs.exists():
+                        pk = qs[0].pk
+                        if pk not in store_pks:
+                            store_pks.append(pk)
+
+        # Now append the pks for the rest of the stores in that path.
+        all_store_pks = Store.objects.filter(
+            pootle_path__startswith=pootle_path
+        ).values_list('pk', flat=True)
+
+        for pk in all_store_pks:
+            if pk not in store_pks:
+                store_pks.append(pk)
+
+        return store_pks
 
     def get_adjusted_location(self, pootle_path):
         """Return the virtual folder location adjusted to the given path.
@@ -248,33 +269,6 @@ class VirtualFolder(models.Model):#TODO this must be a TreeItem
                         items.append(store)
 
         return items
-
-    def get_store_pks_in(self, pootle_path):
-        """Return the list of stores in the given path for the virtual folder.
-
-        This provides the list of stores to display units for when translating
-        in a given path.
-
-        This is intended to be used only for the most important virtual folder,
-        but no limitation is enforced.
-        """
-        store_pks = []
-
-        # Adjust virtual folder location for current pootle path.
-        location = self.get_adjusted_location(pootle_path)
-
-        # Iterate over each file in the filtering rules to see if matches.
-        for filename in self.filter_rules.split(","):
-            vf_file = "/".join([location, filename])
-
-            if vf_file.startswith(pootle_path):
-                try:
-                    store = Store.objects.get(pootle_path=vf_file)
-                    store_pks.append(store.pk)
-                except Exception:
-                    pass
-
-        return store_pks
 
 #    #def get_drill_down_url(self, pootle_path):
 #    #    return 

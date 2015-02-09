@@ -67,6 +67,7 @@ from .util import (UNTRANSLATED, FUZZY, TRANSLATED, STATES_MAP,
 #: will be used against the DB.
 ALLOWED_SORTS = {
     'units': {
+        'priority': 'priority',
         'oldest': 'submitted_on',
         'newest': '-submitted_on',
     },
@@ -219,14 +220,6 @@ def get_step_query(request, units_queryset):
 
             if unit_filter == 'all':
                 match_queryset = units_queryset
-            elif unit_filter == 'most-important':
-                match_queryset = units_queryset
-                pootle_path = request.GET.get('path', None)
-                vf = VirtualFolder.get_most_important_in(pootle_path)
-
-                if vf is not None:
-                    stores_pks = vf.get_store_pks_in(pootle_path)
-                    match_queryset = match_queryset.filter(store__id__in=stores_pks)
             elif unit_filter == 'translated':
                 match_queryset = units_queryset.filter(state=TRANSLATED)
             elif unit_filter == 'untranslated':
@@ -295,7 +288,21 @@ def get_step_query(request, units_queryset):
             sort_by = ALLOWED_SORTS[sort_on].get(sort_by_param, None)
             if sort_by is not None:
                 if sort_on in SIMPLY_SORTED:
-                    match_queryset = match_queryset.order_by(sort_by)
+                    if sort_by == 'priority':
+                        # Sort units by the virtual folder priority.
+
+                        pootle_path = request.GET.get('path', None)
+                        stores_pks = VirtualFolder.get_store_pks_by_priority_for(pootle_path)
+
+                        match_queryset = match_queryset.extra(
+                            select={
+                                'priority': "CASE WHEN pootle_store_store.id=802 THEN 1 ELSE 3 END",
+                            }
+                        ).extra(
+                            order_by=['priority']
+                        )
+                    else:
+                        match_queryset = match_queryset.order_by(sort_by)
                 else:
                     # Omit leading `-` sign
                     if sort_by[0] == '-':
