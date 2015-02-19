@@ -289,18 +289,9 @@ def get_step_query(request, units_queryset):
             if sort_by is not None:
                 if sort_on in SIMPLY_SORTED:
                     if sort_by == 'priority':
-                        # Sort units by the virtual folder priority.
-
-                        pootle_path = request.GET.get('path', None)
-                        stores_pks = VirtualFolder.get_store_pks_by_priority_for(pootle_path)
-
-                        match_queryset = match_queryset.extra(
-                            select={
-                                'priority': "CASE WHEN pootle_store_store.id=802 THEN 1 ELSE 3 END",
-                            }
-                        ).extra(
-                            order_by=['priority']
-                        )
+                        match_queryset = match_queryset.annotate(
+                            max_priority=Max("vfolders__priority")
+                        ).order_by("-max_priority")
                     else:
                         match_queryset = match_queryset.order_by(sort_by)
                 else:
